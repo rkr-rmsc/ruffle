@@ -16,7 +16,7 @@ use std::time::Instant;
 use url::Url;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize, Size};
-use winit::event::{ElementState, KeyEvent, Modifiers, StartCause, WindowEvent};
+use winit::event::{ElementState, KeyEvent, Modifiers, StartCause, TouchPhase, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::{Fullscreen, Icon, WindowAttributes, WindowId};
@@ -70,6 +70,40 @@ impl MainWindow {
             MENU_HEIGHT as f64 * self.gui.window().scale_factor()
         };
         match event {
+            WindowEvent::Touch(touch) => {
+                if self.gui.is_context_menu_visible() {
+                    return;
+                }
+
+                use ruffle_core::events::MouseButton as RuffleMouseButton;
+                let button = RuffleMouseButton::Left;
+                let x = touch.location.x;
+                let y = touch.location.y;
+
+                let event = match touch.phase {
+                    TouchPhase::Started => PlayerEvent::MouseDown {
+                        x,
+                        y,
+                        button,
+                        index: None,
+                    },
+                    TouchPhase::Moved => PlayerEvent::MouseMove {
+                        x,
+                        y
+                    },
+                    TouchPhase::Ended => PlayerEvent::MouseUp {
+                        x,
+                        y,
+                        button,
+                    },
+                    TouchPhase::Cancelled => PlayerEvent::MouseUp {
+                        x,
+                        y,
+                        button,
+                    },
+                };
+                self.player.handle_event(event);
+            }
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             }
@@ -270,7 +304,7 @@ impl MainWindow {
                         width.max(1.0),
                         height.max(1.0) + height_offset * self.gui.window().scale_factor(),
                     )
-                    .into()
+                        .into()
                 }
                 (None, Some(height)) => {
                     let scale = height / movie_height;
@@ -279,13 +313,13 @@ impl MainWindow {
                         width.max(1.0),
                         height.max(1.0) + height_offset * self.gui.window().scale_factor(),
                     )
-                    .into()
+                        .into()
                 }
                 (Some(width), Some(height)) => PhysicalSize::new(
                     width.max(1.0),
                     height.max(1.0) + height_offset * self.gui.window().scale_factor(),
                 )
-                .into(),
+                    .into(),
             };
 
             let window_size = Size::clamp(
@@ -441,7 +475,7 @@ impl ApplicationHandler<RuffleEvent> for App {
             } else {
                 (350, MENU_HEIGHT + 16)
             }
-            .into();
+                .into();
             let preferred_width = self.preferences.cli.width;
             let preferred_height = self.preferences.cli.height;
             let start_fullscreen = self.preferences.cli.fullscreen;
@@ -476,7 +510,7 @@ impl ApplicationHandler<RuffleEvent> for App {
                 movie_url.clone(),
                 no_gui,
             )
-            .expect("GUI controller should be created");
+                .expect("GUI controller should be created");
 
             let mut player = PlayerController::new(
                 event_loop_proxy.clone(),
